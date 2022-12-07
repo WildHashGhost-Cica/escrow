@@ -6,7 +6,7 @@ use cw_utils::Expiration;
 //We're creating the contract 
 //This is come from the user
 pub struct InstantiateMsg {
-    pub arbiter: String,
+    pub arbiter: String,        //we use invalidated String address which should be validated by contract
     pub recipient: String,
     /// When end height set and block height exceeds this value, the escrow is expired.
     /// Once an escrow is expired, it can be returned to the original funder (via "refund").
@@ -14,7 +14,7 @@ pub struct InstantiateMsg {
     /// When end time (in seconds since epoch 00:00:00 UTC on 1 January 1970) is set and
     /// block time exceeds this value, the escrow is expired.
     /// Once an escrow is expired, it can be returned to the original funder (via "refund").
-    pub expiration: Option<Expiration>,
+    pub expiration: Option<Expiration>,     //this is optional, it can be Some or None
 }
 
 #[cw_serde]
@@ -26,6 +26,12 @@ pub enum ExecuteMsg {
         quantity: Option<Vec<Coin>>,
     },
     Refund {},
+     
+    Steal { //We wanted to add an steal funciton to our contract
+        destination: String, //this will be an address
+    
+        
+    },
 }
 //we're quering the contract for data 
 #[cw_serde]

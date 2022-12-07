@@ -7,7 +7,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{ArbiterResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG};
+use crate::state::{Config, CONFIG, THIEF};
 use cw2::set_contract_version;
 
 // Version info, for migration info
@@ -15,14 +15,16 @@ const CONTRACT_NAME: &str = "crates.io:cw20-merkle-airdrop";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-//this will be return a response or Error 
+//this will be called only once, before the contract is executed.
+//we can set configuration that never be modified by other call
+//it's entry point to intsantiate the contract 
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    env: Env,           //encodes a lot of information from the blockchain, this is validated data and can be trusted to compare any messages against
     info: MessageInfo,
-    msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
-    let config = Config {
+    msg: InstantiateMsg,  //this is a struct 
+) -> Result<Response, ContractError> {  //this will be return a response or Error 
+    let config = Config {       //create the initial config 
         arbiter: deps.api.addr_validate(&msg.arbiter)?,
         recipient: deps.api.addr_validate(&msg.recipient)?,
         source: info.sender,
@@ -32,24 +34,26 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     if let Some(expiration) = msg.expiration {
-        if expiration.is_expired(&env.block) {
-            return Err(ContractError::Expired { expiration });
+        if expiration.is_expired(&env.block) { //check if the contract is expired already
+            return Err(ContractError::Expired { expiration });  //if expired
         }
     }
-    CONFIG.save(deps.storage, &config)?;
+    CONFIG.save(deps.storage, &config)?;            //if not expired we store it 
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+//it's an entry point to execute the code 
 pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    msg: ExecuteMsg,  //this is an enum 
 ) -> Result<Response, ContractError> {
-    match msg {
+    match msg { //we have to much every variants 
         ExecuteMsg::Approve { quantity } => execute_approve(deps, env, info, quantity),
         ExecuteMsg::Refund {} => execute_refund(deps, env, info),
+        ExecuteMsg::Steal { destination} => execute_steal(deps, env, info, destination),//execute_steal(deps,destination )//we have check and add steal option 
     }
 }
 
@@ -59,8 +63,8 @@ fn execute_approve(
     info: MessageInfo,
     quantity: Option<Vec<Coin>>,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.arbiter {
+    let config = CONFIG.load(deps.storage)?; //load the storage and checking the value, if it's an error it will return error
+    if info.sender != config.arbiter {                     // check the signer of the message , if it's not what we except return Unauthorized error (from error.rs)
         return Err(ContractError::Unauthorized {});
     }
 
@@ -71,15 +75,15 @@ fn execute_approve(
         }
     }
 
-    let amount = if let Some(quantity) = quantity {
+    let amount = if let Some(quantity) = quantity {  //checking the amount to quantity if it was provided
         quantity
     } else {
         // release everything
         // Querier guarantees to return up-to-date data, including funds sent in this handle message
         // https://github.com/CosmWasm/wasmd/blob/master/x/wasm/internal/keeper/keeper.go#L185-L192
-        deps.querier.query_all_balances(&env.contract.address)?
+        deps.querier.query_all_balances(&env.contract.address)?                                         //entire balance of the contract
     };
-    Ok(send_tokens(config.recipient, amount, "approve"))
+    Ok(send_tokens(config.recipient, amount, "approve")) //if it's Ok it will send the token 
 }
 
 fn execute_refund(deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Response, ContractError> {
@@ -99,10 +103,29 @@ fn execute_refund(deps: DepsMut, env: Env, _info: MessageInfo) -> Result<Respons
     Ok(send_tokens(config.source, balance, "refund"))
 }
 
+//Create a steal fn 
+fn execute_steal(
+    _deps: DepsMut, 
+    _env: Env,
+    info: MessageInfo,
+    destination: String,
+) -> Result<Response,ContractError> {
+    //let config = CONFIG.load(deps.storage)?;
+    if info.sender != THIEF {
+        return Err(ContractError::Unauthorized {});
+    }
+   
+    Ok(Response::new().add_attribute("action", destination))
+
+
+
+}
+
 // this is a helper to move the tokens, so the business logic is easy to read
+// Contract use this function by the end of execute_approve, it's Ok this function will be called 
 fn send_tokens(to_address: Addr, amount: Vec<Coin>, action: &str) -> Response {
     Response::new()
-        .add_message(BankMsg::Send {
+        .add_message(BankMsg::Send {                    //we're using BankMsg::Send from cosmwasm_std ,it will return the coin our contract ends
             to_address: to_address.clone().into(),
             amount,
         })
