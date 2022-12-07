@@ -30,6 +30,7 @@ use cw_escrow::state::Config;
 use cw_utils::Expiration;
 
 // This line will test the output of cargo wasm
+//I runned cargo wasm command to get this (../target/wasm32-unknown-unknown/release/cw_escrow.wasm)file
 static WASM: &[u8] = include_bytes!("../target/wasm32-unknown-unknown/release/cw_escrow.wasm");
 // You can uncomment this line instead to test productionified build from rust-optimizer
 // static WASM: &[u8] = include_bytes!("../contract.wasm");

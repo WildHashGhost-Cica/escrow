@@ -3,6 +3,8 @@ use cosmwasm_std::{Addr, Coin};
 use cw_utils::Expiration;
 
 #[cw_serde]
+//We're creating the contract 
+//This is come from the user
 pub struct InstantiateMsg {
     pub arbiter: String,
     pub recipient: String,
@@ -16,6 +18,8 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+//We're using the contract 
+//This come from an execute contract 
 pub enum ExecuteMsg {
     Approve {
         // release some coins - if quantity is None, release all coins in balance
@@ -23,7 +27,7 @@ pub enum ExecuteMsg {
     },
     Refund {},
 }
-
+//we're quering the contract for data 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {

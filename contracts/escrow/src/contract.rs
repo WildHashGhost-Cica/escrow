@@ -1,3 +1,5 @@
+//We modifies here our contract
+
 use cosmwasm_std::{
     entry_point, to_binary, Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult,
@@ -13,6 +15,7 @@ const CONTRACT_NAME: &str = "crates.io:cw20-merkle-airdrop";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+//this will be return a response or Error 
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
